@@ -1,0 +1,137 @@
+import requests 
+from flask import Flask, request
+import yfinance as yf
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+
+stock_id = '2330.TW'  # 台積電
+token = '要改改....7E4hgJ5TtYT+1BI26edJejutWHlfoskAzGqKeYMMKdt0xwRuGkT7P/WaYkEAlq++wdB04t89/1O/w1cDnyilFU='
+# 初始化 Flask 應用程式
+app = Flask(__name__)
+
+def 畫_KD圖(df, stock_id='2330'):
+    plt.figure(figsize=(10, 5))
+    plt.plot(df.index, df['K'], label='K', color='blue')
+    plt.plot(df.index, df['D'], label='D', color='orange')
+    plt.title(f'{stock_id} KD 指標圖')
+    plt.xlabel('日期')
+    plt.ylabel('值')
+    plt.legend()
+    plt.grid(True)
+    #filename = f'{stock_id}_KD.png'
+    filename = f"static/{stock_id}_kd.png"
+    plt.savefig(filename)
+    plt.close()
+    print(os.getcwd())
+    return filename
+    
+def 計算_KD(df, n=9):
+    df = df.copy()
+    low_min = df['Low'].rolling(window=n).min()
+    high_max = df['High'].rolling(window=n).max()
+    df['RSV'] = (df['Close'] - low_min) / (high_max - low_min) * 100
+    df['K'] = df['RSV'].ewm(com=2).mean()
+    df['D'] = df['K'].ewm(com=2).mean()
+    return df
+
+def 傳送到_LINE(TOKEN, image_path, message='這是 KD 圖',reply_token=None,df_kd=None):
+
+    image_url = request.host_url + image_path  # 像 http://127.0.0.1:5000/static/2330_kd.png
+    image_url = image_url.replace('//static', '/static')
+    image_url = image_url.replace('http://', 'https://')
+    分析文字 = 分析_KD(df_kd)
+    print(image_url)
+    print(image_url)
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + TOKEN
+    }
+    payload = {
+        "replyToken": reply_token,
+        #"messages": [{
+         "messages": [
+        {
+            "type": "text",
+            "text": f"KD 分析結果：\n{分析文字}"
+        },
+        {
+            "type": "image",
+            "originalContentUrl": image_url,
+            "previewImageUrl": image_url
+        }
+     ]
+    }
+    
+    # 發送 POST 請求至 LINE Messaging API
+    r=response = requests.post(
+        "https://api.line.me/v2/bot/message/reply",
+        headers=headers,
+        json=payload
+    )
+    return r.status_code
+def 分析_KD(df):
+    最新K = df['K'].iloc[-1]
+    最新D = df['D'].iloc[-1]
+    前一K = df['K'].iloc[-2]
+    前一D = df['D'].iloc[-2]
+
+    建議 = ""
+
+    if 前一K < 前一D and 最新K > 最新D:
+        建議 = "✅ 黃金交叉，考慮買進時機"
+    elif 前一K > 前一D and 最新K < 最新D:
+        建議 = "⚠️ 死亡交叉，可能轉跌，謹慎觀察"
+    elif 最新K < 20:
+        建議 = "🔽 超賣區，可能反彈"
+    elif 最新K > 80:
+        建議 = "🔼 超買區，可能修正"
+    else:
+        建議 = "📊 無明確交叉，繼續觀察"
+    return f"最新 K 值：{最新K:.2f}\n最新 D 值：{最新D:.2f}\n建議：{建議}"
+
+# LINE Webhook 入口
+@app.route("/", methods=['POST'])
+def linebot():
+    # 取得使用者傳來的資料
+    data = request.get_json()
+#    print(data)
+    if 'destination' not in data :
+        print("有人來亂");
+        abort(400)
+    elif data['destination']=='要修改.3dfc9e37ce16047ab5c2d' and len(data["events"])>0:
+        print("有人驗證成功")
+    #    return "OK",200
+    # 提取 replyToken
+    reply_token = data['events'][0]['replyToken']
+    message = data["events"][0]["message"]['text']
+    stock_id=message+".TW"
+    # 回傳文字訊息
+#    response = send_text_message(reply_token, "回應您一則圖片")
+    
+#    if response.status_code == 200:
+#        return "OK", 200
+#    else:
+#        print("發送訊息失敗:", response.status_code, response.text)
+#        return "Error", 400
+    print("開始從yahoo下載") 
+    df = yf.download(stock_id, period='1mo', interval='1d')
+    print("完成從yahoo下載, 開始計算KD")
+    df_kd = 計算_KD(df)
+    #print(df_kd)
+    print("完成計算_KD, 開始畫KD圖")
+    image_file = 畫_KD圖(df_kd, stock_id)
+    print("完成畫KD圖, 開傳送到line"+image_file)
+    status = 傳送到_LINE(token, image_file, f'{stock_id} KD',reply_token,df_kd)
+    print("完成送到line")
+  # 處理失敗狀況
+    if df is None or df.empty:
+        return '找不到該股票資料', 400
+    # 這裡你可能還會畫圖、送 LINE 等
+    else:
+    # 最後務必 return
+        return '成功送出 KD 圖', 200
+#print(f"發送狀態: {status}")
+# 啟動 Flask 伺服器
+if __name__ == "__main__":
+    app.run(port= 3000)

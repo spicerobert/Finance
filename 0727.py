@@ -11,6 +11,16 @@ https://developers.line.biz/en/reference/messaging-api/#send-replmsg1={
   "text": "您好！我是聊天機器人\n\n"
 }y-message
 """
+from pyngrok import ngrok
+# Terminate open tunnels if any exist
+ngrok.kill()
+# Get your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
+NGROK_AUTH_TOKEN = "307S2PVheQuY6a2KVXIVsJr7Jky_rvpitHzLNesTFyKSyYeS"  #@param {type:"string"}
+ngrok.set_auth_token(NGROK_AUTH_TOKEN)
+# Open a http tunnel on port 5000
+public_url = ngrok.connect(5000)
+print(f"Ngrok tunnel is active at: {public_url}")
+
 import requests
 from flask import Flask, request
 
