@@ -11,6 +11,7 @@ https://developers.line.biz/en/reference/messaging-api/#send-replmsg1={
   "text": "您好！我是聊天機器人\n\n"
 }y-message
 """
+'''
 from pyngrok import ngrok
 # Terminate open tunnels if any exist
 ngrok.kill()
@@ -20,6 +21,7 @@ ngrok.set_auth_token(NGROK_AUTH_TOKEN)
 # Open a http tunnel on port 5000
 public_url = ngrok.connect(5000)
 print(f"Ngrok tunnel is active at: {public_url}")
+'''
 
 import requests
 from flask import Flask, request
@@ -28,7 +30,7 @@ from flask import Flask, request
 app = Flask(__name__)
 
 # 設定 LINE BOT Token
-BOT_TOKEN = "lBunjLa9oETPP9SRai3fnpXqY4s/6qFWCCabpQxRqRgGCqIx0jMo/SNMZe3w17lwSqeyzs8HvmdzVbuA6dKNsGRzxyFfL2HY+CiuYOYGM3mZhRt+Eb8gkaKpcoJTHlc6RWDJ7ihK3xuaKz2E+F9AegdB04t89/1O/w1cDnyilFU="
+BOT_TOKEN = "d1Ft6RdG29yn5O235dbj3l0ZAPxiOAMBKO8w5HxkCXcrEUIMxe3WV6mz2ic199qYUrf7eiKFKkpCgDdD4FnqKbmMiG5emaPRyNq0ZEkUQWaBpEvZCvUrkb1XA7EanLIMu4cXUABxMlRPMDcR+1S8qQdB04t89/1O/w1cDnyilFU="
 
 # 傳送文字訊息函數
 def send_text_message(reply_token):   #, text):
