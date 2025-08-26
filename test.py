@@ -1,13 +1,18 @@
-"""第二版，用手動加密
-LINE Bot Webhook 簡易 Flask 實作（含簡易簽章驗證）
+"""
+第三版，最簡易，可手動無驗證簽章
+LINE Bot 簡易 Flask 後端範例（含簡易驗證簽章）
 
-本程式為使用 Flask 製作的 LINE Bot webhook 接收端範例，
-採用手動方式進行 X-Line-Signature 簽章驗證，確保訊息來源為 LINE 官方伺服器。
+這是一個簡化版本的 LINE Bot 後端實作，使用 Flask 接收 webhook，
+並透過 LINE Messaging API 回覆固定文字訊息。
 
-功能簡介：
-- 接收來自 LINE 的 POST 請求（Webhook）
-- 使用 Channel Secret 搭配 HMAC-SHA256 演算法驗證簽章
-- 若驗證成功，印出 webhook 資料；失敗則回傳 400 錯誤
+適用場景：
+- 本機開發、測試階段
+- 快速體驗 LINE Bot 架構與回應流程
+
+注意事項（Warning）：
+- 此版本**未實作 X-Line-Signature 驗證**，無法確認 webhook 是否來自 LINE Server，
+  在正式上線或處理敏感資料時**極不安全**。
+- 建議正式上線時改用 WebhookHandler 或手動 HMAC 驗證方式處理簽章。
 
 使用者需要填入正確的 Channel access token 與 Channel secret 才能運作
 """
@@ -32,9 +37,9 @@ configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
 
 # 初始化 Flask 應用程式
 app = Flask(__name__)
-# 這表示只有當 LINE 向Flask發送POST 請求時，callback 函數才會被觸發
+# 這表示只有當 LINE 向Flask發送POST 請求時，webhook 函數才會被觸發
 @app.route("/", methods=["POST"])
-def webhook():
+def webhook(): #驗證簽章
     import hmac, hashlib, base64
     body = request.get_data(as_text=True)
     signature = request.headers.get("X-Line-Signature", "")
@@ -42,7 +47,20 @@ def webhook():
     if signature != base64.b64encode(hash).decode():
         abort(400)
     else:
-        print(body)
+        data = request.get_json()
+        print(data)      
+        # 提取 replyToken
+        reply_token = data["events"][0]["replyToken"]
+
+        # 回傳文字訊息
+        with ApiClient(configuration) as api_client:
+            messaging_api = MessagingApi(api_client)
+            messaging_api.reply_message_with_http_info(
+            ReplyMessageRequest(
+                reply_token=reply_token,
+                messages=[TextMessage(text="這是簡易驗證版機器人回覆")]
+            )
+        )
     return "OK"
 
 # 啟動 Flask 伺服器

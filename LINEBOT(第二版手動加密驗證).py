@@ -32,7 +32,7 @@ configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
 
 # 初始化 Flask 應用程式
 app = Flask(__name__)
-# 這表示只有當 LINE 向Flask發送POST 請求時，callback 函數才會被觸發
+# 這表示只有當 LINE 向Flask發送POST 請求時， webhook 函數才會被觸發
 @app.route("/", methods=["POST"])
 def webhook():
     import hmac, hashlib, base64
