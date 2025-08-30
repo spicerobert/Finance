@@ -25,21 +25,14 @@ configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
 
 # 初始化 Flask 應用程式
 app = Flask(__name__)
-
-# 設定 LINE BOT Token
-# CaT = "lBunjLa9oETPP9SRai3fnpXqY4s/6qFWCCabpQxRqRgGCqIx0jMo/SNMZe3w17lwSqeyzs8HvmdzVbuA6dKNsGRzxyFfL2HY+CiuYOYGM3mZhRt+Eb8gkaKpcoJTHlc6RWDJ7ihK3xuaKz2E+F9AegdB04t89/1O/w1cDnyilFU="
-# configuration = Configuration(access_token=CaT)
-
 # 這表示只有當 LINE 向Flask發送POST 請求時，webhook 函數才會被觸發
 @app.route("/", methods=['POST'])
 def linebot():
     # 取得使用者傳來的資料
     data = request.get_json()
-    print(data)
-    
+    print(data)    
     # 提取 replyToken
-    reply_token = data["events"][0]["replyToken"]
-    
+    reply_token = data["events"][0]["replyToken"]    
     # 回傳文字訊息
     with ApiClient(configuration) as api_client:
         messaging_api = MessagingApi(api_client)
@@ -48,8 +41,7 @@ def linebot():
             reply_token=reply_token,
             messages=[TextMessage(text="這是無驗證版機器人回覆")]
         )
-    )
-    
+    )    
     return "OK", 200
 
 # 啟動 Flask 伺服器
