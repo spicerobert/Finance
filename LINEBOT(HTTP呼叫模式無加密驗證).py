@@ -54,7 +54,7 @@ def linebot():
     # 提取 replyToken
     reply_token = data['events'][0]['replyToken']
     # 回傳文字訊息
-    response = send_text_message(reply_token)
+    response = send_text_message(reply_token,"Python訊息測試")
     
     if response.status_code == 200:
         return "OK", 200
