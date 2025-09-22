@@ -1,17 +1,15 @@
-from flask import Flask, request, abort
 import time
 import requests
-import hmac
-import hashlib
-import base64
-import json
-import os
 import re
 import pandas as pd
 from datetime import datetime
+
+from flask import Flask, request, abort
 from linebot.v3.messaging import (Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage, ApiException)
 
 # Load configuration from config.json
+import json
+import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
 with open(config_path, 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -24,6 +22,9 @@ app = Flask(__name__)
 port = "3001"
 
 # LINE Webhook 入口
+import hmac
+import hashlib
+import base64
 @app.route("/", methods=['POST'])
 def linebot():
     # 採用手動方式進行 X-Line-Signature 簽章驗證，確保訊息來源為 LINE 官方伺服器

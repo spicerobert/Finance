@@ -1,4 +1,0 @@
-line-bot-sdk==3.7
-flask==3.0.0
-requests==2.31.0
-pyngrok==7.3.0

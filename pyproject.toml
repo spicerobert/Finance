@@ -1,0 +1,13 @@
+    [project]
+name = "finance"
+version = "0.1.0"
+description = "股票研究工具，兼具line-bot的功能"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.0.0",
+    "line-bot-sdk>=3.19.1",
+    "pandas>=2.3.2",
+    "pyngrok>=7.3.0",
+    "requests>=2.32.5",
+]
