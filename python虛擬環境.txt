@@ -1,0 +1,63 @@
+1.下載安裝ngrok，註冊後複製token
+2.執行ngrok config add-authtoken <token>，已成功設定token
+3.執行ngrok https 5000，啟動臨時伺服器
+4.建立venv資料夾，存放python虛擬環境(可建立多個不同的環境)
+5.進入CMD，python -m venv <環境名稱>，建立一個虛擬環境資料夾
+6.在CMD下進入Scripts，執行Activate.bat，啟動虛擬環境
+7.在這個環境下設定安裝所需套件requirements.txt
+8.在Scrpits下，執行pip install -r <requirements.txt 所屬路徑>
+9.離開虛擬環境，在CMD下輸入deactivate
+10.回到VScode，在程式碼右下角，選擇更改為虛擬環境Scripts下的python.exe
+11.執行ngrok http <通道>
+12.記得免費版ngrok的，每次執行ngrok後，都要重新複製IP更新webhook
+13.執行flask
+
+
+
+使用CONDA建立虛擬環境
+@echo off
+echo 正在建立 LangChain 專案環境...
+
+REM 建立 venv 資料夾
+if not exist "venv" mkdir venv
+cd venv
+
+REM 建立虛擬環境
+echo 建立虛擬環境...
+python -m venv langchain-env
+
+REM 啟動虛擬環境
+echo 啟動虛擬環境...
+call langchain-env\Scripts\Activate.bat
+
+REM 升級 pip
+python -m pip install --upgrade pip
+
+REM 安裝套件
+echo 安裝必要套件...
+pip install -r ..\requirements.txt
+
+REM 註冊 Jupyter 核心
+echo 註冊 Jupyter 核心...
+python -m ipykernel install --user --name langchain-env --display-name "Python (langchain-env)"
+
+echo 環境建立完成！
+echo 使用以下命令啟動環境：
+echo cd venv
+echo langchain-env\Scripts\Activate.bat
+echo jupyter notebook
+
+pause
+
+
+步驟 2：使用 Conda 建立環境
+# 方法 1：使用 environment.yml
+conda env create -f environment.yml
+# 方法 2：使用 requirements.txt
+conda create -n langchain python=3.11
+conda activate langchain
+pip install -r requirements.txt
+
+步驟 3：註冊 Jupyter 核心
+conda activate langchain
+python -m ipykernel install --user --name langchain --display-name "Python (langchain)"
