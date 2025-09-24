@@ -1,17 +1,15 @@
-from flask import Flask, request, abort
 import time
 import requests
-import hmac
-import hashlib
-import base64
-import json
-import os
 import re
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+
+from flask import Flask, request, abort
 from linebot.v3.messaging import (Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage, ApiException)
 
 # Load configuration from config.json
+import json
+import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
 with open(config_path, 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -24,6 +22,9 @@ app = Flask(__name__)
 port = "3001"
 
 # LINE Webhook 入口
+import hmac
+import hashlib
+import base64
 @app.route("/", methods=['POST'])
 def linebot():
     # 採用手動方式進行 X-Line-Signature 簽章驗證，確保訊息來源為 LINE 官方伺服器
@@ -90,7 +91,7 @@ def linebot():
             elif message == '5':
                 meg = mes5
             else:
-                if len(message) == 4 and message.isdigit():
+                if len(message) == 4 and message.isdigit(): #長度是4，並且都是數字
                     # 設定要取得的股票資料日期
                     print(f"查詢股票代碼: {message}, 日期: {target_date}")
                     # 初始化 TaiwanStockData 類別，傳入日期參數
@@ -144,7 +145,10 @@ def linebot():
                         meg = mes_return
                     else:
                         # 無法辨識的訊息，回傳錯誤訊息
-                        meg = mes_err
+                        meg = {
+                            "type": "text",
+                            "text": mes_err["text"] + "\n" + mes1["text"]
+                        }
         except Exception as e:
             print(f"發生未預期錯誤: {e}")
             mes_return = {
@@ -191,45 +195,62 @@ class TaiwanStockData:
         """
         取得台灣股票基本面資訊
         """
-        timestamp = int(time.time() * 1000)
-        url = f"https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date={self.date_str}&selectType=ALL&response=json&_={timestamp}"
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        target_date = datetime.strptime(self.date_str, "%Y%m%d")
+        max_retries = 10  # 最多往前找10天
 
-        try:
-            print(f"正在取得 {self.date_str} 的台灣股票資訊...")
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  # 檢查HTTP錯誤
+        for i in range(max_retries):
+            date_str = target_date.strftime("%Y%m%d")
+            # timestamp = int(time.time() * 1000)
+            url = f"https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date={date_str}&selectType=ALL&response=json"  #&_={timestamp}"
+            headers = {'User-Agent': 'Mozilla/5.0'}
 
-            # 解析JSON資料
-            data = response.json()
+            try:
+                print(f"正在取得 {date_str} 的台灣股票資訊...")
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()  # 檢查HTTP錯誤
 
-            if not data:
-                print("未取得任何資料")
-                return None
+                # 解析JSON資料
+                data = response.json()
 
-            # 轉換為DataFrame
-            self.df = pd.DataFrame(data["data"], columns=data["fields"])
-            date = data["date"]
-            print(date)
-            # 資料清理和轉換
-            self.df["收盤價"] = pd.to_numeric(self.df["收盤價"].str.replace(",", ""), errors="coerce")
-            self.df['殖利率(%)'] = pd.to_numeric(self.df['殖利率(%)'], errors='coerce')
-            self.df['本益比'] = pd.to_numeric(self.df['本益比'], errors='coerce')
-            self.df['股價淨值比'] = pd.to_numeric(self.df['股價淨值比'], errors='coerce')
+                if data.get("stat") == "很抱歉，沒有符合條件的資料!":
+                    print(f"{date_str} 沒有資料，嘗試前一天...")
+                    target_date -= timedelta(days=1)
+                    continue
 
-            # 添加資料取得時間
-            self.df['DataDate'] = date
+                if not data or "data" not in data:
+                    print(f"{date_str} 未取得任何資料，嘗試前一天...")
+                    target_date -= timedelta(days=1)
+                    continue
 
-            print(f"成功取得 {len(self.df)} 筆股票資料")
-            print(self.df)
-            return self.df
+                # 轉換為DataFrame
+                self.df = pd.DataFrame(data["data"], columns=data["fields"])
+                date = data["date"]
+                print(f"成功取得 {date} 的資料")
+                
+                # 資料清理和轉換
+                self.df["收盤價"] = pd.to_numeric(self.df["收盤價"].str.replace(",", ""), errors="coerce")
+                self.df['殖利率(%)'] = pd.to_numeric(self.df['殖利率(%)'], errors='coerce')
+                self.df['本益比'] = pd.to_numeric(self.df['本益比'], errors='coerce')
+                self.df['股價淨值比'] = pd.to_numeric(self.df['股價淨值比'], errors='coerce')
 
-        except requests.exceptions.RequestException as e:
-            print(f"網路請求錯誤: {e}")
-        except json.JSONDecodeError as e:
-            print(f"JSON解析錯誤: {e}")
-        except Exception as e:
-            print(f"發生未預期錯誤: {e}")
+                # 添加資料取得時間
+                self.df['DataDate'] = date
+
+                print(f"成功取得 {len(self.df)} 筆股票資料")
+                return self.df
+
+            except requests.exceptions.RequestException as e:
+                print(f"網路請求錯誤: {e}")
+                break # 網路有問題，直接中斷
+            except json.JSONDecodeError as e:
+                print(f"JSON解析錯誤: {e}")
+                # JSON錯誤也可能是查無資料的回應格式不同，嘗試前一天
+                target_date -= timedelta(days=1)
+            except Exception as e:
+                print(f"發生未預期錯誤: {e}")
+                break # 其他未預期錯誤，直接中斷
+        
+        print(f"在過去 {max_retries} 天內都找不到資料。")
         return None
 
     def analyze_stock_data(self):

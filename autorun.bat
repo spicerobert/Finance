@@ -1,3 +1,3 @@
 @echo off
-"E:\Google Drive\venv\py-venv\Scripts\python.exe" "E:\Google Drive\venv\py-venv\test.py"
+"E:\Git\Finance\.venv\Scripts\python.exe" "E:\Git\Finance\test.py"
 pause
