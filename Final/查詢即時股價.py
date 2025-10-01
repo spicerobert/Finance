@@ -91,6 +91,9 @@ def stockprice(stock_codes_list):
         price = stock_data.get('z', '-')
         bid_price = stock_data.get('b', '_').split('_')[0]
         yesterday_price = stock_data.get('y', '-')
+        high = stock_data.get('h', '—')
+        low = stock_data.get('l', '—')
+        open_price = stock_data.get('o', '—')
         source = ""
         vol = stock_data.get('v', 'N/A')
 
@@ -129,7 +132,13 @@ def stockprice(stock_codes_list):
                 pass
 
         # 組合單支股票的結果
-        result_text = f"{name}\n最新成交價:{price_display}{source}\n{updown}漲跌:{change}＊漲跌幅:{percentage}\n成交量:{vol}"
+        result_text = (
+            f"{name}\n"
+            f"最新成交價:{price_display}{source}\n"
+            f"開盤:{open_price}｜最高:{high}｜最低:{low}\n"
+            f"{updown}漲跌:{change}＊漲跌幅:{percentage}\n"
+            f"成交量:{vol}"
+        )
         results.append(result_text)
 
     # 將所有結果用分隔線串接起來
