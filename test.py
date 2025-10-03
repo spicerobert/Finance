@@ -450,37 +450,37 @@ class TaiwanStockData:
         print(low_pe[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False))
         return low_pe[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
     
-    def save_to_excel(self, filename):
-        """
-        將資料儲存為Excel檔案
-        Args:
-            filename: 檔案名稱
-        """
-        if self.df is None or self.df.empty:
-            print("無資料可儲存")
-            return
+    # def save_to_excel(self, filename):
+    #     """
+    #     將資料儲存為Excel檔案
+    #     Args:
+    #         filename: 檔案名稱
+    #     """
+    #     if self.df is None or self.df.empty:
+    #         print("無資料可儲存")
+    #         return
 
-        try:
-            self.df.to_excel(filename, index=False, engine='openpyxl')
-            print(f"\n資料已儲存至: {filename}")
-        except Exception as e:
-            print(f"儲存檔案時發生錯誤: {e}")
+    #     try:
+    #         self.df.to_excel(filename, index=False, engine='openpyxl')
+    #         print(f"\n資料已儲存至: {filename}")
+    #     except Exception as e:
+    #         print(f"儲存檔案時發生錯誤: {e}")
 
-    def search_stock(self, code_or_name):
-        """
-        搜尋特定股票
-        Args:
-            code_or_name: 股票代碼或名稱
-        """
-        if self.df is None:
-            print("尚未取得資料")
-            return None
+    # def search_stock(self, code_or_name):
+    #     """
+    #     搜尋特定股票
+    #     Args:
+    #         code_or_name: 股票代碼或名稱
+    #     """
+    #     if self.df is None:
+    #         print("尚未取得資料")
+    #         return None
 
-        result = self.df[
-            (self.df['證券代號'].str.contains(str(code_or_name), na=False)) |
-            (self.df['證券名稱'].str.contains(str(code_or_name), na=False))
-        ]
-        return result
+    #     result = self.df[
+    #         (self.df['證券代號'].str.contains(str(code_or_name), na=False)) |
+    #         (self.df['證券名稱'].str.contains(str(code_or_name), na=False))
+    #     ]
+    #     return result
 
     def get_specific_stock_info(self, stock_code):
         """
@@ -553,7 +553,7 @@ class TaiwanStockData:
 # 主選單說明訊息 (當用戶輸入 '1' 或無法辨識訊息時使用)
 mes1 = {
     "type": "text",
-    "text": "您好！\n我是股票資訊查詢小幫手,請輸入您欲查詢的代碼[1]或[2]或[3]或[4]\n1: 個股日本益比、殖利率及股價淨值比\n2. 高股息殖利率股票 (前10名)\n3. 低本益比股票 (前10名)\n4. 比較兩個不同日期的股票資料\n"
+    "text": "您好！\n我是股票資訊查詢小幫手,請輸入您欲查詢的代碼[1]或[2]或[3]或[4]或[5]\n1: 個股日本益比、殖利率及股價淨值比\n2. 高股息殖利率股票 (前10名)\n3. 低本益比股票 (前10名)\n4. 比較兩個不同日期的股票資料\n5. 查詢特定日期的股票資料"
 }
 
 # 延伸說明訊息 (輸入 '1' 時顯示更多選項)
