@@ -1,9 +1,7 @@
 import time
 import requests
-import re
 import pandas as pd
 from datetime import datetime, timedelta
-
 from flask import Flask, request, abort
 from linebot.v3.messaging import (Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage, ApiException)
 
@@ -32,17 +30,14 @@ def linebot():
     signature = request.headers.get("X-Line-Signature", "")
     hash = hmac.new(CHANNEL_SECRET.encode(), body.encode(), hashlib.sha256).digest()
     if signature != base64.b64encode(hash).decode():
-        abort(400)
-    
+        abort(400)    
     # 取得使用者傳來的資料
     data = request.get_json()
-    print(data)
-    
+    print(data)    
     # 確保有事件，且事件類型是訊息，且訊息類型是文字
     if 'events' in data and data['events'] and \
        data['events'][0].get('type') == 'message' and \
-       data['events'][0].get('message', {}).get('type') == 'text':
-        
+       data['events'][0].get('message', {}).get('type') == 'text':        
         # 提取 replyToken
         reply_token = data['events'][0]['replyToken']
         # 提取使用者輸入的訊息
@@ -51,8 +46,7 @@ def linebot():
         try:
             # 設定預設日期為今天（西元年格式）
             today = datetime.today()
-            target_date = today.strftime('%Y%m%d')
-            
+            target_date = today.strftime('%Y%m%d')            
             if message == '1':
                 meg = mes1_1
             elif message == '2':
@@ -88,6 +82,8 @@ def linebot():
                         "text": "無法取得股票資料，請稍後再試"
                     }
                 meg = mes_return
+            elif message == '4':
+                meg = mes4_prompt
             elif message == '5':
                 meg = mes5
             else:
@@ -137,6 +133,27 @@ def linebot():
                                     "type": "text",
                                     "text": "無法取得股票資料，請稍後再試"
                                 }
+                        else:
+                            mes_return = {
+                                "type": "text",
+                                "text": "日期格式錯誤，請使用 YYYYMMDD 格式"
+                            }
+                        meg = mes_return
+                    elif ("日期1" in message and "日期2" in message):
+                        lines = message.split('\n')
+                        date1 = ""
+                        date2 = ""
+                        for x in lines:
+                            if "日期1" in x:
+                                date1 = x.split(':')[1].strip()
+                            if "日期2" in x:
+                                date2 = x.split(':')[1].strip()
+
+                        if is_valid_date(date1) and is_valid_date(date2):
+                            mes_return = {
+                                "type": "text",
+                                "text": TaiwanStockData.compare_dates(date1, date2)
+                            }
                         else:
                             mes_return = {
                                 "type": "text",
@@ -200,8 +217,8 @@ class TaiwanStockData:
 
         for i in range(max_retries):
             date_str = target_date.strftime("%Y%m%d")
-            # timestamp = int(time.time() * 1000)
-            url = f"https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date={date_str}&selectType=ALL&response=json"  #&_={timestamp}"
+            timestamp = int(time.time() * 1000)
+            url = f"https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date={date_str}&selectType=ALL&response=json&_={timestamp}"
             headers = {'User-Agent': 'Mozilla/5.0'}
 
             try:
@@ -271,29 +288,30 @@ class TaiwanStockData:
         print("\n=== 數值欄位統計 ===")
         numeric_stats = self.df[['本益比', '殖利率(%)', '股價淨值比']].describe()
         print(numeric_stats)
+    
+    # 顯示高股息殖利率股票 (前10名)    
     def analyze_stock_data_2(self):
         if self.df is None or self.df.empty:
             print("無資料可分析")
             return
-
-        # 顯示高股息殖利率股票 (前10名)
         high_dividend = self.df[self.df['殖利率(%)'].notna()].nlargest(10, '殖利率(%)')
         print("\n=== 高股息殖利率股票 (前10名) ===")
         print(high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False))
         return high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
+    
+    # 顯示低P/E比股票 (前10名，排除負值和異常值)    
     def analyze_stock_data_3(self):
         if self.df is None or self.df.empty:
             print("無資料可分析")
             return
-        # 顯示低P/E比股票 (前10名，排除負值和異常值)
         low_pe = self.df[(self.df['本益比'] > 0) & (self.df['本益比'] < 100)].nsmallest(10, '本益比')
         print("\n=== 低P/E比股票 (前10名) ===")
         print(low_pe[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False))
         return low_pe[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
+    
     def save_to_excel(self, filename):
         """
         將資料儲存為Excel檔案
-
         Args:
             filename: 檔案名稱
         """
@@ -310,7 +328,6 @@ class TaiwanStockData:
     def search_stock(self, code_or_name):
         """
         搜尋特定股票
-
         Args:
             code_or_name: 股票代碼或名稱
         """
@@ -355,13 +372,12 @@ class TaiwanStockData:
         else:
             text =f"無法找到股票代碼 {stock_code} 的資料"
             print(f"無法找到股票代碼 {stock_code} 的資料")
-
         return text
-    @staticmethod
+
+    # @staticmethod
     def compare_dates(date1, date2):
         """
         比較兩個不同日期的股票資料
-
         Args:
             date1, date2: 日期字串
         """
@@ -381,17 +397,19 @@ class TaiwanStockData:
             comparison['PE_Change'] = comparison['本益比_2'] - comparison['本益比_1']
             comparison['Dividend_Change'] = comparison['殖利率(%)_2'] - comparison['殖利率(%)_1']
 
-            print(f"可比較的股票數量: {len(comparison)}")
+            result_text = f"可比較的股票數量: {len(comparison)}\n"
 
             # 顯示P/E比變化最大的股票
             pe_changes = comparison.dropna(subset=['PE_Change']).nlargest(5, 'PE_Change')
-            print("\nP/E比增加最多的股票:")
-            print(pe_changes[['證券代號', '證券名稱', '本益比_1', '本益比_2', 'PE_Change']].to_string(index=False))
+            result_text += "\nP/E比增加最多的股票:\n"
+            result_text += pe_changes[['證券代號', '證券名稱', '本益比_1', '本益比_2', 'PE_Change']].to_string(index=False)
+            return result_text
+        return f"無法取得 {date1} 或 {date2} 的資料進行比較"
 
 # 訊息定義
 mes1 = {
     "type": "text",
-    "text": "您好！\n我是股票資訊查詢小幫手,請輸入您欲查詢的代碼[1]或[2]或[3]\n1: 個股日本益比、殖利率及股價淨值比\n2. 高股息殖利率股票 (前10名)\n3. 低本益比股票 (前10名)\n"
+    "text": "您好！\n我是股票資訊查詢小幫手,請輸入您欲查詢的代碼[1]或[2]或[3]或[4]\n1: 個股日本益比、殖利率及股價淨值比\n2. 高股息殖利率股票 (前10名)\n3. 低本益比股票 (前10名)\n4. 比較兩個不同日期的股票資料\n"
 }
 mes1_1 = {
     "type": "text",
@@ -400,6 +418,10 @@ mes1_1 = {
 mes5 = {
     "type": "text",
     "text": "請依格式輸入:\n股票代碼:XXXX\n日期:20250731"
+}
+mes4_prompt = {
+    "type": "text",
+    "text": "請依格式輸入兩個日期:\n日期1:YYYYMMDD\n日期2:YYYYMMDD"
 }
 mes_err = {
     "type": "text",
