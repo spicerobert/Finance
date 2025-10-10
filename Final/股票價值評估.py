@@ -21,37 +21,6 @@ port = "3001"
 import hmac
 import hashlib
 import base64
-
-def send_line_message(reply_token, text):
-    """
-    輔助函數：發送 LINE 訊息給使用者
-
-    Args:
-        reply_token (str): LINE 回覆權杖
-        text (str): 要發送的訊息內容
-
-    Returns:
-        tuple: (status_message, status_code)
-    """
-    try:
-        # 建立 API 客戶端連線
-        with ApiClient(configuration) as api_client:
-            api_instance = MessagingApi(api_client)
-            # 建立回覆訊息請求，包含 reply_token 和訊息內容
-            reply_message_request = ReplyMessageRequest(
-                reply_token=reply_token,
-                messages=[TextMessage(text=text)]
-            )
-            # 發送訊息給 LINE 官方伺服器
-            api_instance.reply_message(reply_message_request)
-        # 成功發送訊息，回傳 HTTP 200 狀態碼
-        return "OK", 200
-    except ApiException as e:
-        # LINE Bot API 發送失敗的異常處理
-        print(f"發送訊息失敗: {e}")  # 輸出錯誤資訊到伺服器日誌
-        # 回傳 HTTP 400 錯誤狀態碼
-        return "Error", 400
-
 # LINE linebot 入口
 @app.route("/", methods=["POST"])
 def linebot():
@@ -85,48 +54,74 @@ def linebot():
     if 'events' in data and data['events'] and \
        data['events'][0].get('type') == 'message' and \
        data['events'][0]['message'].get('type') == 'text':
-
-        # 提取訊息回覆權杖 (replyToken)
-        # LINE 要求在 30 秒內使用此權杖回覆訊息，否則權杖會失效
         reply_token = data['events'][0]['replyToken']
-
-        # 提取使用者實際傳送的文字訊息內容
         message = data['events'][0]['message']['text']
 
         # ===== 訊息處理主邏輯 =====
         try:
             result_text = 計算股價(message)
-            # 使用輔助函數發送訊息
-            return send_line_message(reply_token, result_text)
-
+            # 設定訊息物件
+            mes_return = {"type": "text", "text": result_text}
         except Exception as e:
             # 捕捉所有未預期的程式錯誤
             print(f"發生未預期錯誤: {e}")  # 輸出錯誤資訊到伺服器日誌
-            # 回傳錯誤訊息給用戶，讓用戶知道發生了問題
-            error_message = f"發生未預期錯誤: {e}"
-            # 使用輔助函數發送錯誤訊息
-            return send_line_message(reply_token, error_message)
+            # 設定錯誤訊息物件
+            mes_return = {"type": "text", "text": f"發生未預期錯誤: {e}"}
 
+        # ===== 訊息發送處理 =====
+        # 使用統一的訊息發送邏輯，處理可能的 API 錯誤
+        try:
+            # 建立 API 客戶端連線
+            with ApiClient(configuration) as api_client:
+                api_instance = MessagingApi(api_client)
+                # 提取訊息內容，如果沒有 "text" 鍵，使用預設錯誤訊息
+                text_message = TextMessage(text=mes_return.get("text", "發生錯誤，無法取得訊息內容"))
+                # 建立回覆訊息請求，包含 reply_token 和訊息內容
+                reply_message_request = ReplyMessageRequest(reply_token=reply_token,messages=[text_message])
+                # 發送訊息給 LINE 官方伺服器
+                api_instance.reply_message(reply_message_request)
+            # 成功發送訊息，回傳 HTTP 200 狀態碼
+            return "OK", 200
+        except ApiException as e:
+            # LINE Bot API 發送失敗的異常處理
+            print(f"發送訊息失敗: {e}")  # 輸出錯誤資訊到伺服器日誌
+            # 回傳 HTTP 400 錯誤狀態碼
+            return "Error", 400
     return "OK", 200
 
-def 取得股票股利資料(stock_code):
+# 個人設定的目標殖利率
+# 根據證交所統計, 台股整體殖利率自 2014 年至 2023 年 7 月近十年的平均為 3.94%, 而自 2018 年至 2023 年 7 月近五年的台股平均殖利率約 3.83%
+# 用台灣銀行數位存款利率當最低標準
+def 計算股價(stock_code, target_yield = 0.06, market_average_yield = 0.038, low_target_yield = 0.03):
+    stock_data = stock_dividend(stock_code)
+    if stock_data:
+        # 計算平均股利
+        average_dividend = stock_data["股價"] * stock_data["近5年平均現金殖利率"]
+        # print(f"股票代號 {stock_code} 平均股利: {average_dividend:.2f} 元")
+        
+        # 計算便宜價、合理價、昂貴價
+        cheap, fair, expensive = calculate_prices(average_dividend, target_yield, market_average_yield, low_target_yield)
+        # 顯示價格
+        # print(f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元")
+        # print(f"股票代號 {stock_code} 的合理價 : {fair :.2f} 元")
+        # print(f"股票代號 {stock_code} 的昂貴價 : {expensive :.2f} 元")
+        return f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元, 合理價 : {fair :.2f} 元, 昂貴價 : {expensive :.2f} 元"    
+    else:
+        msg = f"{stock_code}無法獲取股利資料，請檢查股票代號或網站連接"
+        print(msg)
 
-    # 根據股票的代號建立 URL
-    url = f""
-
+# 從Yahoo股市 url 取得股票股利資料
+def stock_dividend(stock_code):
+    url = f"https://tw.stock.yahoo.com/quote/{stock_code}/dividend"
     # 發送 GET 請求獲取網頁內容
     response = requests.get(url)
-
     # Http Status Code 200 OK
     if response.status_code == 200:
-        # 解析 HTML 內容
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
+        soup = BeautifulSoup(response.text, 'html.parser')        
         # 提取股價，根據 Yahoo 股市網頁結構，上漲、下跌、平盤股價在不同的 class 中
         stock_price_up = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c) C($c-trend-up)'})
         stock_price_down = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c) C($c-trend-down)'})
-        stock_price_flat = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c)'})
-        
+        stock_price_flat = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c)'})        
         # 根據不同的狀態來抓取股價
         if stock_price_up:
             stock_price = float(stock_price_up.text.strip().replace(',', ''))  # 上漲
@@ -136,16 +131,13 @@ def 取得股票股利資料(stock_code):
             stock_price = float(stock_price_flat.text.strip().replace(',', ''))  # 平盤
         else:
             print(f"{stock_code}未找到股價")
-            return None
-        
+            return None        
         # 找到包含股利資料的 <p> 標籤
-        dividend_section = soup.find('p', {'class' : 'Mb(20px) Mb(12px)--mobile Fz(16px) Fz(18px)--mobile C($c-primary-text)'})
-        
+        dividend_section = soup.find('p', {'class' : 'Mb(20px) Mb(12px)--mobile Fz(16px) Fz(18px)--mobile C($c-primary-text)'})        
         if dividend_section:
             # 提取股利資料
             # 找到所有 <span class="Fw(b)"> 標籤，這些標籤包含我們需要的數據
-            data_spans = dividend_section.find_all('span', {'class' : 'Fw(b)'})
-            
+            data_spans = dividend_section.find_all('span', {'class' : 'Fw(b)'})            
             # 檢查是否找到足夠的數據
             if len(data_spans) >= 4:
                 # 連續發放股利年數
@@ -153,14 +145,12 @@ def 取得股票股利資料(stock_code):
                 # 合計發放股利金額
                 total_dividend = data_spans[1].text.strip()
                 # 近 5 年平均現金殖利率
-                average_dividend_yield = float(data_spans[3].text.strip().replace('%', '')) / 100  # 轉換為小數
-                
+                average_dividend_yield = float(data_spans[3].text.strip().replace('%', '')) / 100  # 轉換為小數                
                 # 顯示抓取到的資料
                 # print(f"股票代號: {stock_code}", f"股價: {stock_price}")
                 # print(f"連續發放股利年數: {years_of_dividend}")
                 # print(f"合計發放股利金額: {total_dividend} 元")
                 # print(f"近 5 年平均現金殖利率: {average_dividend_yield}")
-
                 return {
                     "股票代號": stock_code,
                     "股價": stock_price,
@@ -183,42 +173,10 @@ def calculate_prices(dividend_per_share, target_yield, market_average_yield, low
     
     cheap_price = dividend_per_share / target_yield
     fair_price = dividend_per_share / market_average_yield
-    expensive_price = dividend_per_share / low_target_yield
-    
+    expensive_price = dividend_per_share / low_target_yield    
     return cheap_price, fair_price, expensive_price
 
-# 個人設定的目標殖利率
-# 根據證交所統計, 台股整體殖利率自 2014 年至 2023 年 7 月近十年的平均為 3.94%, 而自 2018 年至 2023 年 7 月近五年的台股平均殖利率約 3.83%
-# 用台灣銀行數位存款利率當最低標準
-def 計算股價(stock_code, target_yield = 0.06, market_average_yield = 0.038, low_target_yield = 0.03):
-
-    stock_data = 取得股票股利資料(stock_code)
-
-    if stock_data:
-        # 計算平均股利
-        average_dividend = stock_data["股價"] * stock_data["近5年平均現金殖利率"]
-        # print(f"股票代號 {stock_code} 平均股利: {average_dividend:.2f} 元")
-        
-        # 計算便宜價、合理價、昂貴價
-        cheap, fair, expensive = calculate_prices(average_dividend, target_yield, market_average_yield, low_target_yield)
-        # 顯示價格
-        # print(f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元")
-        # print(f"股票代號 {stock_code} 的合理價 : {fair :.2f} 元")
-        # print(f"股票代號 {stock_code} 的昂貴價 : {expensive :.2f} 元")
-        return f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元, 合理價 : {fair :.2f} 元, 昂貴價 : {expensive :.2f} 元"
-    
-    else:
-        msg = f"{stock_code}無法獲取股利資料，請檢查股票代號或網站連接"
-        print(msg)
-        return msg
-
 # print(計算股價("2881"))  # 台積電
-
-
-
-
-
-
 # 啟動 Flask 伺服器
 if __name__ == "__main__":
     app.run(port=3001)

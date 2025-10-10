@@ -5,6 +5,7 @@ description = "股票研究工具，兼具line-bot的功能"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "bs4>=0.0.2",
     "flask>=3.0.0",
     "line-bot-sdk>=3.19.1",
     "pandas>=2.3.2",

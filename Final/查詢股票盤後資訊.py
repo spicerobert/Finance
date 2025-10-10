@@ -4,13 +4,10 @@ import requests  # 用於HTTP請求台灣證券交易所API
 import pandas as pd  # 用於資料處理和分析
 from datetime import datetime, timedelta  # 用於日期處理和計算
 from flask import Flask, request, abort  # Flask框架用於建立Web應用程式及處理HTTP請求
-from linebot.v3.messaging import (
-    Configuration, ApiClient, MessagingApi,
-    ReplyMessageRequest, TextMessage, ApiException
-)  # LINE Bot SDK v3 用於訊息處理
-
-# 載入設定檔案 (config.json)
-# 注意：config.json 需包含 CHANNEL_ACCESS_TOKEN 和 CHANNEL_SECRET
+from linebot.v3.messaging import (Configuration, ApiClient, MessagingApi,ReplyMessageRequest, TextMessage, ApiException)  # LINE Bot SDK v3 用於訊息處理
+import requests
+from bs4 import BeautifulSoup
+# 載入設定檔案 (config.json)注意：config.json 需包含 CHANNEL_ACCESS_TOKEN 和 CHANNEL_SECRET
 import json
 import os
 config_path = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -101,16 +98,10 @@ def linebot():
                 stock_df = stock_data.get_stock_data()
                 if stock_df is not None:
                     # 成功取得資料，使用 analyze_stock_data_2 分析並取得高股息殖利率前10名
-                    mes_return = {
-                        "type": "text",
-                        "text": stock_data.analyze_stock_data_2()
-                    }
+                    mes_return = {"type": "text","text": stock_data.analyze_stock_data_2()}
                 else:
                     # 無法取得股票資料，回傳錯誤訊息
-                    mes_return = {
-                        "type": "text",
-                        "text": "無法取得股票資料，請稍後再試"
-                    }
+                    mes_return = {"type": "text","text": "無法取得股票資料，請稍後再試"}
                 meg = mes_return
             # ===== 分支 3: 低本益比股票排行 =====
             elif message == '3':
@@ -120,16 +111,10 @@ def linebot():
                 stock_df = stock_data.get_stock_data()
                 if stock_df is not None:
                     # 成功取得資料，使用 analyze_stock_data_3 分析並取得低本益比前10名
-                    mes_return = {
-                        "type": "text",
-                        "text": stock_data.analyze_stock_data_3()
-                    }
+                    mes_return = {"type": "text","text": stock_data.analyze_stock_data_3()}
                 else:
                     # 無法取得股票資料，回傳錯誤訊息
-                    mes_return = {
-                        "type": "text",
-                        "text": "無法取得股票資料，請稍後再試"
-                    }
+                    mes_return = {"type": "text","text": "無法取得股票資料，請稍後再試"}
                 meg = mes_return
             # ===== 分支 4: 比較兩個日期的本益比變化 =====
             elif message == '4':
@@ -152,16 +137,10 @@ def linebot():
                     stock_df = stock_data.get_stock_data()
                     if stock_df is not None:
                         # 成功取得資料，使用 get_specific_stock_info 取得特定股票資訊
-                        mes_return = {
-                            "type": "text",
-                            "text": stock_data.get_specific_stock_info(message)
-                        }
+                        mes_return = {"type": "text","text": stock_data.get_specific_stock_info(message)}
                     else:
                         # 無法取得股票資料，回傳錯誤訊息
-                        mes_return = {
-                            "type": "text",
-                            "text": "無法取得股票資料，請稍後再試"
-                        }
+                        mes_return = {"type": "text","text": "無法取得股票資料，請稍後再試"}
                     meg = mes_return
                 else:
                     # ===== 多行格式訊息處理 =====
@@ -193,22 +172,13 @@ def linebot():
                             stock_df = stock_data.get_stock_data()
                             if stock_df is not None:
                                 # 成功取得資料，使用 get_specific_stock_info 取得特定股票資訊
-                                mes_return = {
-                                    "type": "text",
-                                    "text": stock_data.get_specific_stock_info(stock_code)
-                                }
+                                mes_return = {"type": "text","text": stock_data.get_specific_stock_info(stock_code)}
                             else:
                                 # 無法取得股票資料，回傳錯誤訊息
-                                mes_return = {
-                                    "type": "text",
-                                    "text": "無法取得股票資料，請稍後再試"
-                                }
+                                mes_return = {"type": "text","text": "無法取得股票資料，請稍後再試"}
                         else:
                             # 日期格式錯誤，回傳格式提示訊息
-                            mes_return = {
-                                "type": "text",
-                                "text": "日期格式錯誤，請使用 YYYYMMDD 格式"
-                            }
+                            mes_return = {"type": "text","text": "日期格式錯誤，請使用 YYYYMMDD 格式"}
                         meg = mes_return
 
                     # ===== 處理兩個日期比較 =====
@@ -231,33 +201,21 @@ def linebot():
                         # 驗證兩個日期格式是否都正確
                         if is_valid_date(date1) and is_valid_date(date2):
                             # 呼叫類別方法比較兩個日期的本益比變化
-                            mes_return = {
-                                "type": "text",
-                                "text": TaiwanStockData.compare_dates(date1, date2)
-                            }
+                            mes_return = {"type": "text","text": TaiwanStockData.compare_dates(date1, date2)}
                         else:
                             # 日期格式錯誤，回傳格式提示訊息
-                            mes_return = {
-                                "type": "text",
-                                "text": "日期格式錯誤，請使用 YYYYMMDD 格式"
-                            }
+                            mes_return = {"type": "text","text": "日期格式錯誤，請使用 YYYYMMDD 格式"}
                         meg = mes_return
                     else:
                         # ===== 無法辨識的訊息處理 =====
                         # 訊息不符合任何支援的格式，回傳錯誤提示和功能說明
-                        meg = {
-                            "type": "text",
-                            "text": mes_err["text"] + "\n" + mes1["text"]
-                        }
+                        meg = {"type": "text","text": mes_err["text"] + "\n" + mes1["text"]}
         # ===== 異常處理 =====
         except Exception as e:
             # 捕捉所有未預期的程式錯誤
             print(f"發生未預期錯誤: {e}")  # 輸出錯誤資訊到伺服器日誌
             # 回傳錯誤訊息給用戶，讓用戶知道發生了問題
-            mes_return = {
-                "type": "text",
-                "text": f"發生未預期錯誤: {e}"
-            }
+            mes_return = {"type": "text","text": f"發生未預期錯誤: {e}"}
             meg = mes_return
 
         # ===== 訊息回傳處理 =====
@@ -283,6 +241,127 @@ def linebot():
             print(f"發送訊息失敗: {e}")  # 輸出錯誤資訊到伺服器日誌
             # 回傳 HTTP 400 錯誤狀態碼
             return "Error", 400
+
+# 從Yahoo股市 url 取得股票股利資料
+def stock_div(stock_code):
+    """
+    從Yahoo股市取得股票股利資料
+
+    Args:
+        stock_code: 股票代碼
+
+    Returns:
+        dict: 包含股價、殖利率等資料的字典，取得失敗則返回 None
+    """
+    url = f"https://tw.stock.yahoo.com/quote/{stock_code}/dividend"
+    # 發送 GET 請求獲取網頁內容
+    response = requests.get(url)
+    # Http Status Code 200 OK
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # 提取股價，根據 Yahoo 股市網頁結構，上漲、下跌、平盤股價在不同的 class 中
+        stock_price_up = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c) C($c-trend-up)'})
+        stock_price_down = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c) C($c-trend-down)'})
+        stock_price_flat = soup.find('span', {'class' : 'Fz(32px) Fw(b) Lh(1) Mend(16px) D(f) Ai(c)'})
+        # 根據不同的狀態來抓取股價
+        if stock_price_up:
+            stock_price = float(stock_price_up.text.strip().replace(',', ''))  # 上漲
+        elif stock_price_down:
+            stock_price = float(stock_price_down.text.strip().replace(',', ''))  # 下跌
+        elif stock_price_flat:
+            stock_price = float(stock_price_flat.text.strip().replace(',', ''))  # 平盤
+        else:
+            print(f"{stock_code}未找到股價")
+            return None
+        # 找到包含股利資料的 <p> 標籤
+        dividend_section = soup.find('p', {'class' : 'Mb(20px) Mb(12px)--mobile Fz(16px) Fz(18px)--mobile C($c-primary-text)'})
+        if dividend_section:
+            # 提取股利資料
+            # 找到所有 <span class="Fw(b)"> 標籤，這些標籤包含我們需要的數據
+            data_spans = dividend_section.find_all('span', {'class' : 'Fw(b)'})
+            # 檢查是否找到足夠的數據
+            if len(data_spans) >= 4:
+                # 連續發放股利年數
+                years_of_dividend = data_spans[0].text.strip()
+                # 合計發放股利金額
+                total_dividend = data_spans[1].text.strip()
+                # 近 5 年平均現金殖利率
+                average_dividend_yield = float(data_spans[3].text.strip().replace('%', '')) / 100  # 轉換為小數
+                # 顯示抓取到的資料
+                # print(f"股票代號: {stock_code}", f"股價: {stock_price}")
+                # print(f"連續發放股利年數: {years_of_dividend}")
+                # print(f"合計發放股利金額: {total_dividend} 元")
+                # print(f"近 5 年平均現金殖利率: {average_dividend_yield}")
+                return {
+                    "股票代號": stock_code,
+                    "股價": stock_price,
+                    "連續發放股利年數": years_of_dividend,
+                    "合計發放股利金額": total_dividend,
+                    "近5年平均現金殖利率": average_dividend_yield
+                }
+            else:
+                print(f"{stock_code}未能找到完整的股利資料")
+                return None
+        else:
+            print(f"{stock_code}未找到股利資料區域")
+            return None
+    else:
+        print(f"{stock_code}無法獲取網頁內容，請檢查網站連接")
+        return None
+
+# 計算便宜價、合理價、昂貴價
+def calculate_prices(dividend_per_share, target_yield=0.06, market_average_yield=0.038, low_target_yield=0.03):
+    """
+    基於股息殖利率計算股票的三種價格區間
+
+    Args:
+        dividend_per_share (float): 每股股息
+        target_yield (float): 目標殖利率，預設 6% (保守型投資者)
+        market_average_yield (float): 市場平均殖利率，預設 3.8% (合理價)
+        low_target_yield (float): 最低目標殖利率，預設 3% (積極型投資者)
+
+    Returns:
+        tuple: (便宜價, 合理價, 昂貴價)
+    """
+    cheap_price = dividend_per_share / target_yield
+    fair_price = dividend_per_share / market_average_yield
+    expensive_price = dividend_per_share / low_target_yield
+    return cheap_price, fair_price, expensive_price
+
+# 個人設定的目標殖利率
+# 根據證交所統計, 台股整體殖利率自 2014 年至 2023 年 7 月近十年的平均為 3.94%, 而自 2018 年至 2023 年 7 月近五年的台股平均殖利率約 3.83%
+# 用台灣銀行數位存款利率當最低標準
+def 計算股價(stock_code, target_yield=0.06, market_average_yield=0.038, low_target_yield=0.03):
+    """
+    計算指定股票的三種價格區間（便宜價、合理價、昂貴價）
+
+    Args:
+        stock_code (str): 股票代號
+        target_yield (float): 目標殖利率，預設 6% (保守型投資者)
+        market_average_yield (float): 市場平均殖利率，預設 3.8% (合理價)
+        low_target_yield (float): 最低目標殖利率，預設 3% (積極型投資者)
+
+    Returns:
+        str: 格式化的價格信息，包含成功或失敗訊息
+    """
+    stock_data = stock_div(stock_code)
+    if stock_data:
+        # 計算平均股利
+        average_dividend = stock_data["股價"] * stock_data["近5年平均現金殖利率"]
+        # calculate_prices(average_dividend, target_yield, market_average_yield, low_target_yield)：
+
+        # 計算便宜價、合理價、昂貴價
+        cheap, fair, expensive = calculate_prices(average_dividend, target_yield, market_average_yield, low_target_yield)
+        # 顯示價格
+        # print(f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元")
+        # print(f"股票代號 {stock_code} 的合理價 : {fair :.2f} 元")
+        # print(f"股票代號 {stock_code} 的昂貴價 : {expensive :.2f} 元")
+        return f"股票代號 {stock_code} 的便宜價 : {cheap :.2f} 元, 合理價 : {fair :.2f} 元, 昂貴價 : {expensive :.2f} 元"
+
+    else:
+        msg = f"{stock_code}無法獲取股利資料，請檢查股票代號或網路連接"
+        print(msg)
+        return msg
 
 def is_valid_date(date_str, date_format="%Y%m%d"):
     """
@@ -430,15 +509,34 @@ class TaiwanStockData:
         numeric_stats = self.df[['本益比', '殖利率(%)', '股價淨值比']].describe()
         print(numeric_stats)
     
-    # 顯示高股息殖利率股票 (前10名)    
+    # 顯示高股息殖利率股票 (前10名)
     def analyze_stock_data_2(self):
         if self.df is None or self.df.empty:
             print("無資料可分析")
             return
+
         high_dividend = self.df[self.df['殖利率(%)'].notna()].nlargest(10, '殖利率(%)')
         print("\n=== 高股息殖利率股票 (前10名) ===")
         print(high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False))
-        return high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
+
+        # 建立結果字串 - 保留原本的表格格式
+        result_text = high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
+        result_text += "\n\n=== 價格建議分析 ===\n"
+
+        # 為每只股票計算價格建議
+        for idx, stock in high_dividend.iterrows():
+            stock_code = stock['證券代號']
+            stock_name = stock['證券名稱']
+            current_price = stock['收盤價']
+
+            print(f"正在計算股票 {stock_code} {stock_name} 的價格建議...")
+
+            # 計算建議價格
+            price_result = 計算股價(stock_code)
+            result_text += f"{stock_code} {stock_name} (現價: {current_price:.1f})\n"
+            result_text += f"{price_result}\n\n"
+
+        return result_text
     
     # 顯示低P/E比股票 (前10名，排除負值和異常值)    
     def analyze_stock_data_3(self):
