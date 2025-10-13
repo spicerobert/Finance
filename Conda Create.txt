@@ -1,0 +1,31 @@
+# 語法: conda create --name <環境名稱> python=<Python版本>
+# 範例: 建立一個名為 "data_analysis" 且 Python 版本為 3.10 的環境
+conda create --name data_analysis python=3.10
+
+# 建立環境的同時，安裝 pandas 和 jupyter
+conda create --name data_analysis python=3.10 pandas jupyter
+
+# 語法: conda activate <環境名稱>
+# 範例:
+conda activate data_analysis
+
+# (在 data_analysis 環境中) 安裝 matplotlib
+conda install matplotlib
+
+# (在 data_analysis 環境中) 查看已安裝的套件
+conda list
+
+conda env list
+# 或
+conda info --envs
+
+# 語法: conda env remove --name <環境名稱>
+# 範例:
+conda env remove --name data_analysis
+
+# 先啟用環境
+conda activate data_analysis
+# 再安裝 ipykernel
+conda install ipykernel
+
+

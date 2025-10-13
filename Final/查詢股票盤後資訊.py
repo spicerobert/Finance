@@ -440,6 +440,7 @@ class TaiwanStockData:
             timestamp = int(time.time() * 1000)
             url = f"https://www.twse.com.tw/rwd/zh/afterTrading/BWIBBU_d?date={date_str}&selectType=ALL&response=json&_={timestamp}"
             headers = {'User-Agent': 'Mozilla/5.0'}
+            print(url)
 
             try:
                 print(f"正在取得 {date_str} 的台灣股票資訊...")
@@ -513,29 +514,43 @@ class TaiwanStockData:
     def analyze_stock_data_2(self):
         if self.df is None or self.df.empty:
             print("無資料可分析")
-            return
+            return "無資料可分析"
 
-        high_dividend = self.df[self.df['殖利率(%)'].notna()].nlargest(10, '殖利率(%)')
+        high_dividend = self.df[self.df['殖利率(%)'].notna()].nlargest(30, '殖利率(%)').copy()
         print("\n=== 高股息殖利率股票 (前10名) ===")
-        print(high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False))
+        
+        # 取得每支股票的平均現金殖利率
+        avg_yields = []
+        for stock_code in high_dividend['證券代號']:
+            stock_info = stock_div(stock_code)
+            if stock_info and "近5年平均現金殖利率" in stock_info:
+                avg_yields.append(stock_info["近5年平均現金殖利率"] * 100) # 轉換為百分比
+            else:
+                avg_yields.append(None) # 如果找不到資料則為 None
+        
+        high_dividend['平均現金殖利率(%)'] = avg_yields
+        
+        # 格式化顯示
+        # 1. 先用原始欄位名稱選取資料
+        high_dividend_display = high_dividend[['證券代號', '證券名稱', '收盤價', '殖利率(%)', '平均現金殖利率(%)', '本益比', '股價淨值比']].copy()
+        
+        # 2. 重新命名欄位成要顯示的名稱
+        high_dividend_display.rename(columns={
+            '證券代號': '代號',
+            '證券名稱': '名稱',
+            '收盤價': '收盤',
+            '殖利率(%)': 'Year%',
+            '平均現金殖利率(%)': 'Avg%'
+        }, inplace=True)
+        
+        # 3. 格式化百分比欄位 (使用新的欄位名稱)
+        high_dividend_display['Year%'] = high_dividend_display['Year%'].map('{:.2f}%'.format, na_action='ignore')
+        high_dividend_display['Avg%'] = high_dividend_display['Avg%'].map('{:.2f}%'.format, na_action='ignore')
 
-        # 建立結果字串 - 保留原本的表格格式
-        result_text = high_dividend[['證券代號', '證券名稱', '殖利率(%)', '本益比', '股價淨值比']].to_string(index=False)
-        result_text += "\n\n=== 價格建議分析 ===\n"
-
-        # 為每只股票計算價格建議
-        for idx, stock in high_dividend.iterrows():
-            stock_code = stock['證券代號']
-            stock_name = stock['證券名稱']
-            current_price = stock['收盤價']
-
-            print(f"正在計算股票 {stock_code} {stock_name} 的價格建議...")
-
-            # 計算建議價格
-            price_result = 計算股價(stock_code)
-            result_text += f"{stock_code} {stock_name} (現價: {current_price:.1f})\n"
-            result_text += f"{price_result}\n\n"
-
+        # 建立結果字串
+        header = "=== 高股息殖利率股票 (前10名) ===\n"
+        result_text = header + high_dividend_display.to_string(index=False)        
+        print(result_text) # 在後端也印出結果
         return result_text
     
     # 顯示低P/E比股票 (前10名，排除負值和異常值)    

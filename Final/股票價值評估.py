@@ -147,10 +147,10 @@ def stock_dividend(stock_code):
                 # 近 5 年平均現金殖利率
                 average_dividend_yield = float(data_spans[3].text.strip().replace('%', '')) / 100  # 轉換為小數                
                 # 顯示抓取到的資料
-                # print(f"股票代號: {stock_code}", f"股價: {stock_price}")
-                # print(f"連續發放股利年數: {years_of_dividend}")
-                # print(f"合計發放股利金額: {total_dividend} 元")
-                # print(f"近 5 年平均現金殖利率: {average_dividend_yield}")
+                print(f"股票代號: {stock_code}", f"股價: {stock_price}")
+                print(f"連續發放股利年數: {years_of_dividend}")
+                print(f"合計發放股利金額: {total_dividend} 元")
+                print(f"近 5 年平均現金殖利率: {average_dividend_yield}")
                 return {
                     "股票代號": stock_code,
                     "股價": stock_price,
